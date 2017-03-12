@@ -12,11 +12,10 @@ This is a TCP Client-Server Application tailored to work with chat protocol stan
 
 ## Tuesday Class Protocol Specifications
 
->User types:          /name <alias>
+>User types:          /name \<alias\>
 >
->Server receives:  NAME <alias>
->
->User changes alias to <alias>, server broadcasts name change to everyone.
+>Server receives:  NAME \<alias\>
+User changes alias to \<alias\>, server broadcasts name change to everyone.
 
 
 >User types:          /whois alias|IP
@@ -26,11 +25,11 @@ This is a TCP Client-Server Application tailored to work with chat protocol stan
 >Server sends alias (if set), and IP address of person of interest only to user who requested.
 
 
->User types:          <message>
+>User types:          \<message\>
 >
->Server receives:  MSG <message> 
+>Server receives:  MSG \<message\> 
 >
->Server broadcasts message with the format “<alias|IP>: <message>” to everyone.
+>Server broadcasts message with the format “\<alias|IP\>: \<message\>” to everyone.
 
 
 >User types:          /quit
