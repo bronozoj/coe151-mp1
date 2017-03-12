@@ -15,14 +15,15 @@ This is a TCP Client-Server Application tailored to work with chat protocol stan
 >User types:          /name \<alias\>
 >
 >Server receives:  NAME \<alias\>
+
 User changes alias to \<alias\>, server broadcasts name change to everyone.
 
 
 >User types:          /whois alias|IP
 >
->Server receives:  WHOIS <alias|IP>
->
->Server sends alias (if set), and IP address of person of interest only to user who requested.
+>Server receives:  WHOIS \<alias|IP\>
+
+Server sends alias (if set), and IP address of person of interest only to user who requested.
 
 
 >User types:          \<message\>
