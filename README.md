@@ -12,51 +12,41 @@ This is a TCP Client-Server Application tailored to work with chat protocol stan
 
 ## Tuesday Class Protocol Specifications
 
+#### User changes alias to \<alias\>, server broadcasts name change to everyone.
+
 >User types:          /name \<alias\>
 >
 >Server receives:  NAME \<alias\>
 
-User changes alias to \<alias\>, server broadcasts name change to everyone.
-
-***
+#### Server sends alias (if set), and IP address of person of interest only to user who requested.
 
 >User types:          /whois alias|IP
 >
 >Server receives:  WHOIS \<alias|IP\>
 
-Server sends alias (if set), and IP address of person of interest only to user who requested.
-
-***
+#### Server broadcasts message with the format “\<alias|IP\>: \<message\>” to everyone.
 
 >User types:          \<message\>
 >
 >Server receives:  MSG \<message\> 
 
-Server broadcasts message with the format “\<alias|IP\>: \<message\>” to everyone.
-
-***
+#### Server closes user connection, server broadcasts “user left chat” message to everyone.
 
 >User types:          /quit
 >
 >Server receives:  QUIT
 
-Server closes user connection, server broadcasts “user left chat” message to everyone.
-
-***
+#### Server sends local time to user who requested.
 
 >User types:          /time
 >
 >Server receives:  TIME
 
-Server sends local time to user who requested.
-
-***
+#### Server sends alias and IP address to user who requested.
 
 >User types:          /whoami
 >
 >Server receives:  WHOAMI
-
-Server sends alias and IP address to user who requested.
 
 Server broadcasts new connections with “user joins chat” message to everyone, and when user opts to change alias, user keeps alias until the end of his/her session (i.e., when user 10.158.22.99 changes own alias to “AriesBestGrill” and disconnects, when user reconnects, user is back to 10.158.22.99).
 
