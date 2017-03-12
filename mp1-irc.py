@@ -91,42 +91,39 @@ class SelfIdentity(NamedSocket):
 		printf(self.prompt + self.keybuffer + ('\b' * (len(self.keybuffer) - self.cursorpos) ) )
 
 	def keyboardin(self, broadcast_list):
-		lels = stdin.read(1)
-		if ord(lels) == 27: #possible esc seq
-			try:
-				lels = stdin.read(2)
-				if lels == '[D' and self.cursorpos > 0: # left arrow
+		lels = stdin.read(10)
+		if lels[:1] == '\x1b': #possible esc seq
+
+			if lels == '\x1b[D': #Left Arrow
+				if self.cursorpos > 0:
 					self.cursorpos = self.cursorpos - 1
 					printf('\b')
 
-				elif lels == '[C' and self.cursorpos < len(self.keybuffer):						
-					printf(self.keybuffer[self.cursorpos])   # right arrow
+			elif lels == '\x1b[C': #Right Arrow
+				if self.cursorpos < len(self.keybuffer):
+					printf(self.keybuffer[self.cursorpos])
 					self.cursorpos = self.cursorpos + 1
 
-				elif lels == '[F': #End
-					printf(self.keybuffer[self.cursorpos:])
-					self.cursorpos = len(self.keybuffer)
+			elif lels == '\x1b[F': #End
+				printf(self.keybuffer[self.cursorpos:])
+				self.cursorpos = len(self.keybuffer)
 
-				elif lels == '[H': #Home
-					printf('\b' * self.cursorpos)
-					self.cursorpos = 0
+			elif lels == '\x1b[H': #Home
+				printf('\b' * self.cursorpos)
+				self.cursorpos = 0
+			elif lels == '\x1b[3~': #Delete
+				printf(self.keybuffer[self.cursorpos + 1:] + ' ' + ('\b' * (len(self.keybuffer) - self.cursorpos) ) )
+				self.keybuffer = self.keybuffer[:self.cursorpos] + self.keybuffer[self.cursorpos + 1:]
 
-				elif lels == '[5' or lels == '[6': #PgUp or PgDn
-					lels = stdin.read(1)
-
-				#else:
-				#	printf(lels)
-			except IOError: # Esc
-				pass
-		elif (lels == '\b' or ord(lels) == 127): #backspace
+		elif (lels == '\b' or lels == '\x7f'): #Backspace
 			if self.cursorpos > 0:
 				printf('\b \b')
 				printf(self.keybuffer[self.cursorpos:] + ' ' + ('\b' * (len(self.keybuffer) - self.cursorpos + 1) ) )
 				self.keybuffer = self.keybuffer[:self.cursorpos - 1] + self.keybuffer[self.cursorpos:]
 				self.cursorpos = self.cursorpos - 1
-		elif lels == '\t': #tab
+		elif lels == '\t': #Tab
 				pass
-		elif lels == '\n': #send
+		elif lels == '\n': #Enter (send)
 			hana = ''
 			song = ''
 			message = ''
@@ -143,7 +140,6 @@ class SelfIdentity(NamedSocket):
 					raise UserQuit
 				elif hana != '':
 					if self.mode:
-						#self.send(('Entered command ' + hana + ' with ' + song).encode(stdout.encoding))
 						commandprocessor(hana.upper(), song, self, broadcast_list, self)
 					else:
 						message = hana.upper() + ' ' + song
@@ -156,7 +152,6 @@ class SelfIdentity(NamedSocket):
 				else:
 					message = 'MSG ' + self.keybuffer
 					serverbroadcast(message + '\n', self, broadcast_list, self, 0)
-#				self.send(('You: ' + self.keybuffer + '\n').encode(stdout.encoding))
 			printf(' ' * (len(self.keybuffer) - self.cursorpos))
 			printf('\b \b' * (len(self.keybuffer)) )
 			self.cursorpos = 0
@@ -164,15 +159,17 @@ class SelfIdentity(NamedSocket):
 		elif len(self.keybuffer) > self.cursorpos:
 			printf(lels + self.keybuffer[self.cursorpos:] + ('\b' * (len(self.keybuffer) - self.cursorpos) ) )
 			self.keybuffer = self.keybuffer[:self.cursorpos] + lels + self.keybuffer[self.cursorpos:]
-			self.cursorpos = self.cursorpos + 1
+			self.cursorpos = self.cursorpos + len(lels)
 		else:
 			printf(lels)
 			self.keybuffer = self.keybuffer + lels
-			self.cursorpos = self.cursorpos + 1
+			self.cursorpos = self.cursorpos + len(lels)
 		
 
 ##################################################################
 # function wrapper for newlineless print (and refresh)
+# needed when printing without newline because of termios
+#
 
 def printf(in_str=''):
 	print(in_str, end='')
@@ -180,6 +177,7 @@ def printf(in_str=''):
 
 ##################################################################
 # function for server broadcasting
+#
 
 def serverbroadcast(in_str, sock_source, broadcast_list, hostsocket, include=1):
 	data = in_str.encode(stdout.encoding)
@@ -187,33 +185,28 @@ def serverbroadcast(in_str, sock_source, broadcast_list, hostsocket, include=1):
 		try:
 			if include or socker != sock_source:
 				socker.send(data)
-#				hostsocket.send( ('to ' + socker.showname() + ' is ' + in_str).encode(stdout.encoding))
 		except BrokenPipeError:
 			socker.close()
 			broadcast_list.remove(socker)
 			data2 = socker.showname() + ' has disconnected unexpectedly\n'
 			serverbroadcaster(in_str, sock_source, broadcast_list)
 
+##################################################################
+# function for command processing (used when in server config)
+#
 
 def commandprocessor(command, parameters, cursock, socketslist, hostsocket):
 	if command == 'QUIT':
-#		print('closing connection for ' + cursock.showname())
 		cursock.shutdown(SHUT_RDWR)
 		cursock.close()
 		socklist.remove(cursock)
 		data = cursock.showname() + ' has disconnected\n'
 		serverbroadcast(data, cursock, socketslist, hostsocket)
-#		data = data.encode(sys.stdout.encoding)
-#		for socker in socklist:
-#			socker.send(data)
+
 	elif command == 'MSG':
 		data = cursock.showname() + ' : ' + parameters + '\n'
 		serverbroadcast(data, cursock, socketslist, hostsocket, 0)
-#		printf(data)
-#		data = data.encode(sys.stdout.encoding)
-#		for socker in socklist:
-#			if socker != rsock:
-#				socker.send(data)
+
 	elif command == 'WHOAMI':
 		data = 'User information:\n\tAddress: ' + cursock.showaddress()
 		data = data + '\n\tAlias: ' + cursock.showname() + '\n'
@@ -228,13 +221,9 @@ def commandprocessor(command, parameters, cursock, socketslist, hostsocket):
 			data = 'Error: Please enter a new alias/name\n'
 			cursock.send(data.encode(stdout.encoding))
 		else :
-#			print('Changing name from ' + cursock.showname() + ' to ' + parameters)
 			data = 'User ' + cursock.showname() + ' is now ' + parameters + '\n'
 			cursock.changename(parameters)
 			serverbroadcast(data, cursock, socketslist, hostsocket)
-#			data = data.encode(stdout.encoding)
-#			for socker in socklist:
-#				socker.send(data)
 	elif command == 'WHOIS':
 		if parameters == '':
 			data = '\nError: No search string\n\n'
@@ -249,12 +238,13 @@ def commandprocessor(command, parameters, cursock, socketslist, hostsocket):
 		data = '\nError: Unknown command entered...\n\n'.encode(stdout.encoding)
 		cursock.send(data)
 
-#################################
+##################################################################
 # Hana TCP Chat Client-Server Application
 # Program Start
 #
-#################################
-print('Machine Problem 1 - Internet Relay Chat 0.9')
+##################################################################
+
+print('Machine Problem 1 - Internet Relay Chat 1.0')
 print('Compliant with T 2:30-5:30 Protocol Standards')
 print('Programmed by: Jaime Bronozo (2013-18000)')
 print('Menu:')
@@ -298,9 +288,6 @@ termnew = tcgetattr(stdin)
 termnew[3] = termnew[3] & ~ECHO & ~ICANON
 tcsetattr(stdin, TCSANOW, termnew)
 
-#keyin = ''
-#cursorpos = 0
-#prompt = '~: '
 printf(prompt)
 
 try:
@@ -349,13 +336,13 @@ except ServerDown:
 	print('\nUnexpected disconnection...')
 finally:
 	if mode:
-		for hannah in socklist:
+		for hanasong in socklist:
 			try:
-				hannah.shutdown(SHUT_RDWR)
+				hanasong.shutdown(SHUT_RDWR)
 			except:
 				pass
 			finally:
-				hannah.close()
+				hanasong.close()
 	else:
 		mainsocket.send('QUIT'.encode(stdout.encoding))
 	try:
