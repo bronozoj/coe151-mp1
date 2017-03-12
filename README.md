@@ -12,9 +12,9 @@ This is a TCP Client-Server Application tailored to work with chat protocol stan
 
 ## Tuesday Class Protocol Specifications
 
->>User types:          /name <alias>
->>
->>Server receives:  NAME <alias>
+>User types:          /name <alias>
+>
+>Server receives:  NAME <alias>
 >
 >User changes alias to <alias>, server broadcasts name change to everyone.
 
