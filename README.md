@@ -18,7 +18,7 @@ This is a TCP Client-Server Application tailored to work with chat protocol stan
 
 User changes alias to \<alias\>, server broadcasts name change to everyone.
 
-* * *
+***
 
 >User types:          /whois alias|IP
 >
@@ -26,6 +26,7 @@ User changes alias to \<alias\>, server broadcasts name change to everyone.
 
 Server sends alias (if set), and IP address of person of interest only to user who requested.
 
+***
 
 >User types:          \<message\>
 >
@@ -33,6 +34,7 @@ Server sends alias (if set), and IP address of person of interest only to user w
 
 Server broadcasts message with the format “\<alias|IP\>: \<message\>” to everyone.
 
+***
 
 >User types:          /quit
 >
@@ -40,6 +42,7 @@ Server broadcasts message with the format “\<alias|IP\>: \<message\>” to eve
 
 Server closes user connection, server broadcasts “user left chat” message to everyone.
 
+***
 
 >User types:          /time
 >
@@ -47,6 +50,7 @@ Server closes user connection, server broadcasts “user left chat” message to
 
 Server sends local time to user who requested.
 
+***
 
 >User types:          /whoami
 >
