@@ -18,7 +18,7 @@ This is a TCP Client-Server Application tailored to work with chat protocol stan
 
 User changes alias to \<alias\>, server broadcasts name change to everyone.
 
-
+* * *
 
 >User types:          /whois alias|IP
 >
