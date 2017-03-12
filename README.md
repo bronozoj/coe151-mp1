@@ -19,37 +19,37 @@ This is a TCP Client-Server Application tailored to work with chat protocol stan
 >User changes alias to <alias>, server broadcasts name change to everyone.
 
 
->>User types:          /whois alias|IP
->>
->>Server receives:  WHOIS <alias|IP>
+>User types:          /whois alias|IP
+>
+>Server receives:  WHOIS <alias|IP>
 >
 >Server sends alias (if set), and IP address of person of interest only to user who requested.
 
 
->>User types:          <message>
->>
->>Server receives:  MSG <message> 
+>User types:          <message>
+>
+>Server receives:  MSG <message> 
 >
 >Server broadcasts message with the format “<alias|IP>: <message>” to everyone.
 
 
->>User types:          /quit
->>
->>Server receives:  QUIT
+>User types:          /quit
+>
+>Server receives:  QUIT
 >
 >Server closes user connection, server broadcasts “user left chat” message to everyone.
 
 
->>User types:          /time
->>
->>Server receives:  TIME
+>User types:          /time
+>
+>Server receives:  TIME
 >
 >Server sends local time to user who requested.
 
 
->>User types:          /whoami
->>
->>Server receives:  WHOAMI
+>User types:          /whoami
+>
+>Server receives:  WHOAMI
 >
 >Server sends alias and IP address to user who requested.
 
