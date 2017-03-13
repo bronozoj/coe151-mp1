@@ -5,6 +5,7 @@ from termios import tcgetattr, tcsetattr, ECHO, ICANON, TCSANOW, TCSAFLUSH
 from fcntl import fcntl, F_GETFL, F_SETFL
 from os import O_NONBLOCK
 from select import select
+from time import strftime
 
 ##################################################################
 # Hana TCP Chat Client-Server Application
@@ -213,7 +214,7 @@ def commandprocessor(command, parameters, cursock, socketslist, hostsocket):
 		cursock.send(data.encode(stdout.encoding))
 
 	elif command == 'TIME':
-		data = 'Its High Noon...(somewhere in the world)\n'.encode(stdout.encoding)
+		data = strftime('%Y %b %d %I:%M:%S %p (%a)').encode(stdout.encoding)
 		cursock.send(data)
 
 	elif command == 'NAME':
