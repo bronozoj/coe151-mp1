@@ -214,7 +214,7 @@ def commandprocessor(command, parameters, cursock, socketslist, hostsocket):
 		cursock.send(data.encode(stdout.encoding))
 
 	elif command == 'TIME':
-		data = strftime('%Y %b %d %I:%M:%S %p (%a)').encode(stdout.encoding)
+		data = strftime('%Y %b %d %I:%M:%S %p (%A)\n').encode(stdout.encoding)
 		cursock.send(data)
 
 	elif command == 'NAME':
