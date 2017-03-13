@@ -46,50 +46,47 @@ termios.tcsetattr(sys.stdin, termios.TCSANOW, termnew)
 printf(prompt)
 keyin = ''
 cursorpos = 0
-try :	
+try :
 	while 1:
 		read_sockets, _, _ = select([clientSocket], [], [], 0)
 		if read_sockets != []:
 			data = clientSocket.recv(4096).decode(sys.stdout.encoding).rstrip().lstrip()
 			if data == '':
 				raise ServerDown('Unexpected blank output', 'Socket may have been shut down')
+			printf(' ' * (len(keyin) - cursorpos) )
 			printf('\b \b' * (len(prompt + keyin)) )
 			print(data)
 			printf(prompt + keyin + ('\b' * (len(keyin) - cursorpos) ) )
 
 		read_keys, _, _ = select([sys.stdin], [], [], 0)
 		if read_keys != []:
-			lels = sys.stdin.read(1)
-			if ord(lels) == 27: #possible esc seq
-				try:
-					lels = sys.stdin.read(2)
-					if lels == '[D' and cursorpos > 0: # left arrow
-						cursorpos = cursorpos - 1
-						printf('\b')
+			lels = sys.stdin.read(10)
+			if lels[:1] == '\x1b': #possible esc seq
+				if lels == '\x1b[D' and cursorpos > 0: # left arrow
+					cursorpos = cursorpos - 1
+					printf('\b')
 
-					elif lels == '[C' and cursorpos < len(keyin):						
-						printf(keyin[cursorpos])   # right arrow
-						cursorpos = cursorpos + 1
+				elif lels == '\x1b[C' and cursorpos < len(keyin):						
+					printf(keyin[cursorpos])   # right arrow
+					cursorpos = cursorpos + 1
 
-					elif lels == '[F': #End
-						printf(keyin[cursorpos:])
-						cursorpos = len(keyin)
+				elif lels == '\x1b[F': #End
+					printf(keyin[cursorpos:])
+					cursorpos = len(keyin)
 
-					elif lels == '[H': #Home
-						printf('\b' * cursorpos)
-						cursorpos = 0
+				elif lels == '\x1b[H': #Home
+					printf('\b' * cursorpos)
+					cursorpos = 0
 
-					elif lels == '[5': #PgUp
-						lels = sys.stdin.read(1)
+				elif lels == '\x1b[5~': #PgUp
+					pass#lels = sys.stdin.read(1)
 
-					elif lels == '[6': #PgDn
-						lels = sys.stdin.read(1)
+				elif lels == '\x1b[6~': #PgDn
+					pass#lels = sys.stdin.read(1)
 
-					#else:
-					#	printf(lels)
-				except IOError: # Esc
-					printf()
-			elif (lels == '\b' or ord(lels) == 127): #backspace
+				#else:
+				#	printf(lels)
+			elif (lels == '\b' or lels[:1] == '\x7f'): #backspace
 				if cursorpos > 0:
 					printf('\b \b')
 					printf(keyin[cursorpos:] + ' ' + ('\b' * (len(keyin) - cursorpos + 1) ) )
