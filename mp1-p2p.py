@@ -27,6 +27,10 @@ class ServerDown(Exception):
 	def __init__(self):
 		pass
 
+class PeerQuit(Exception):
+	def __init__(self):
+		pass
+
 ##################################################################
 # BEGIN
 # Class to manage name association with a socket
@@ -124,35 +128,37 @@ class SelfIdentity(NamedSocket):
 				self.cursorpos = self.cursorpos - 1
 		elif lels == '\t': #Tab
 				pass
-		elif lels == '\n': #Enter (send)
-			hana = ''
-			song = ''
-			message = ''
+		elif lels == '\n': #Enter (send)\
 			self.send(('You: ' + self.keybuffer + '\n').encode(stdout.encoding))
-			if self.keybuffer[:1] == '/':
-				parse = self.keybuffer[1:].split(' ', 1)
-				hana = parse[0]
-				if len(parse) > 1:
-					song = parse[1]
-
-				if hana.upper() == 'QUIT':
-					printf(' ' * (len(self.keybuffer) - self.cursorpos))
-					printf('\b \b' * (len(self.keybuffer + self.prompt)) )
-					raise UserQuit
-				elif hana != '':
-					if self.mode:
-						commandprocessor(hana.upper(), song, self, broadcast_list, self)
-					else:
-						message = hana.upper() + ' ' + song
-						serverbroadcast(message, self, broadcast_list, self, 0)
-				else:
-					self.send('Please enter a command after the \'/\'\n')
+#			if self.keybuffer[:1] == '/':
+#				parse = self.keybuffer[1:].split(' ', 1)
+#				hana = parse[0]
+#				if len(parse) > 1:
+#					song = parse[1]
+#
+#				if hana.upper() == 'QUIT':
+#					printf(' ' * (len(self.keybuffer) - self.cursorpos))
+#					printf('\b \b' * (len(self.keybuffer + self.prompt)) )
+#					raise UserQuit
+#				elif hana != '':
+#					if self.mode:
+#						commandprocessor(hana.upper(), song, self, broadcast_list, self)
+#					else:
+#						message = hana.upper() + ' ' + song
+#						serverbroadcast(message, self, broadcast_list, self, 0)
+#				else:
+#					self.send('Please enter a command after the \'/\'\n')
+			if self.keybuffer.lstrip().rstrip() == 'QUIT':
+				serverbroadcast(self.showname() + ': QUIT', self, broadcast_list, self, 0)
+				raise UserQuit
 			else:
-				if self.mode:
-					commandprocessor('MSG', self.keybuffer, self, broadcast_list, self)
-				else:
-					message = 'MSG ' + self.keybuffer
-					serverbroadcast(message + '\n', self, broadcast_list, self, 0)
+				hana = self.showname() + ': ' + self.keybuffer.lstrip().rstrip() + '\n'
+				serverbroadcast(hana, self, broadcast_list, self, 0)
+#				if self.mode:
+#					commandprocessor('MSG', self.keybuffer, self, broadcast_list, self)
+#				else:
+#					message = 'MSG ' + self.keybuffer
+#					serverbroadcast(message + '\n', self, broadcast_list, self, 0)
 			printf(' ' * (len(self.keybuffer) - self.cursorpos))
 			printf('\b \b' * (len(self.keybuffer)) )
 			self.cursorpos = 0
@@ -263,14 +269,23 @@ else:
 
 port = int(input('Enter port: '))
 
+name = input('Please enter a name: ')
+
 # setting up connection socket
 mainsocket = socket(AF_INET, SOCK_STREAM)
 if mode:
 	mainsocket.bind( (address, port) )
 	mainsocket.listen(5)
 	runningport = port
-	socklist = []
+	print('Awaiting connection...')
+	read_sockets, _, _ = select([mainsocket], [], [])
+	for rsock in read_sockets:
+		clientsocket, clientaddr = rsock.accept()
+		newsock = NamedSocket(clientsocket, clientaddr)
+		socklist = [newsock]
+
 else:
+	print('Connecting to ' + address + ':' + str(port) + '...')
 	mainsocket.connect( (address,port) )
 	socklist = [mainsocket]
 	(_, runningport) = mainsocket.getsockname()
@@ -278,8 +293,12 @@ else:
 prompt = '>> '
 
 myself = SelfIdentity(runningport, prompt, mode)
+myself.changename(name)
 
-print('Switching to chat mode')
+
+print('Connected... Switching to chat mode')
+
+serverbroadcast('You are now chatting with ' + name + '\n', myself, socklist, myself, 0)
 
 # going to termios to allow per character input
 oldflags = fcntl(stdin, F_GETFL)
@@ -298,33 +317,36 @@ try:
 			read_sockets, _, _ = select([mainsocket], [], [], 0)
 			for rsock in read_sockets:
 				clientsocket, clientaddr = rsock.accept()
-				newsock = NamedSocket(clientsocket, clientaddr)
-				data = newsock.showname() + ' has connected\n'
-#				data = data.encode(stdout.encoding)
-				socklist.append(newsock)
-				serverbroadcast(data, newsock, socklist, myself, 0)
+				data = 'Sorry, this peer is connected to someone else.\n'
+				clientsocket.send(data.encode(stdout.encoding))
+				data = myself.showname() + ': QUIT'
+				clientsocket.send(data.encode(stdout.encoding))
+				clientsocket.shutdown(SHUT_RDWR)
+				clientsocket.close()
 		
-		# client - receives from connected server
-		# server - receives and parses commands
+		# receives from connected peer
 		read_sockets, _, _ = select(socklist, [], [], 0)
 		for rsock in read_sockets:
 			hana = ''
 			song = ''
 			data = rsock.recv(4096).decode(stdout.encoding).lstrip().rstrip()
 			if data == '':
-				if mode == 0:
-					print('data is ' + data)
-					raise ServerDown
-				hana = 'QUIT'
-			if mode:
-				result = data.split(' ', 1)
-				hana = result[0]
-				if len(result) > 1:
-					song = result[1]
-				commandprocessor(hana, song, rsock, socklist, myself)
-			else:
-				data = data + '\n'
-				myself.send(data.encode(stdout.encoding))
+				raise ServerDown
+
+			result = data.split(':', 1)
+			if len(result) > 1:
+				hana = result[1].lstrip().rstrip()
+				if hana == 'QUIT':
+					serverbroadcast(data, rsock, socklist, myself, 0)
+					raise PeerQuit
+#			if mode:
+#				result = data.split(' ', 1)
+#				hana = result[0]
+#				if len(result) > 1:
+#					song = result[1]
+#				commandprocessor(hana, song, rsock, socklist, myself)
+			data = data + '\n'
+			myself.send(data.encode(stdout.encoding))
 
 		#polling for user input
 		read_keys, _, _ = select([myself], [], [], 0)
@@ -333,25 +355,35 @@ try:
 
 except (KeyboardInterrupt, UserQuit):
 	print('\nUser quitting...')
+#	for hanasong in socklist:
+#		hanasong.send((myself.showname() + ': QUIT').encode(stdout.encoding))
+#		print('Notifying peers')
+except PeerQuit:
+	print('\nPeer has exited')
 except ServerDown:
 	print('\nUnexpected disconnection...')
 finally:
-	if mode:
+	if mode == 1:
 		for hanasong in socklist:
 			try:
 				hanasong.shutdown(SHUT_RDWR)
+				print('Shutting down client...')
 			except:
 				pass
 			finally:
 				hanasong.close()
+				print('Closing connection to client')
 	else:
-		mainsocket.send('QUIT'.encode(stdout.encoding))
+		mainsocket.send((myself.showname() + ': QUIT').encode(stdout.encoding))
+
 	try:
 		mainsocket.shutdown(SHUT_RDWR)
+		print('Shutting down connection')
 	except:
 		pass
 	finally:
-		mainsocket.close()
+			mainsocket.close()
+			print('Closing connection')
 	print('\nReturning terminal settings')
 	tcsetattr(stdin, TCSAFLUSH, termold)
 	fcntl(stdin, F_SETFL, oldflags)

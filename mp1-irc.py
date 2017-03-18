@@ -333,6 +333,8 @@ try:
 
 except (KeyboardInterrupt, UserQuit):
 	print('\nUser quitting...')
+	if mode == 0:
+		mainsocket.send('QUIT'.encode(stdout.encoding))
 except ServerDown:
 	print('\nUnexpected disconnection...')
 finally:
