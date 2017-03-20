@@ -5,9 +5,9 @@ This documentation is also available in my [Github repository](https://github.co
 This explains a lot about my implementation of an IRC-like chat client and server as well as a P2P model of chat.  
 Note that these applications were rigorously tested on python3 and may not always work as intended in other earlier versions of python (python2.7 perhaps)
 
-mp1-irc.py - Internet Relay Chat Version (Client-Server) full implementation  
-mp1-p2p.py - Peer-to-Peer Chat Version (Client-Server) full implementation  
-hanaserver.py - Interner Relay Chat Server-only implementation
+`mp1-irc.py` - Internet Relay Chat Version (Client-Server) full implementation  
+`mp1-p2p.py` - Peer-to-Peer Chat Version (Client-Server) full implementation  
+`hanaserver.py` - Interner Relay Chat Server-only implementation
 
 ## Tuesday Class Protocols
 
@@ -45,7 +45,7 @@ hanaserver.py - Interner Relay Chat Server-only implementation
 
 #### Server-Client Communication
 
-Clients search for the starting slash character '/' for input and parses possible command.  
+Clients search for the starting slash character `/` for input and parses possible command.  
 >User types: /\<command\> \<parameters\>  
 >Client Send Buffer: \<COMMAND\> \<parameters\>
 
@@ -61,11 +61,11 @@ I defined exception classes for the sole purpose of making the raised exceptions
 
 ### Socket Container Class
 
-I designed a socket container class 'NamedSocket' that stores and exposes socket functions used by my implementation while storing other custom information about that socket like alias name and address.
+I designed a socket container class `NamedSocket` that stores and exposes socket functions used by my implementation while storing other custom information about that socket like alias name and address.
 
 #### SelfSocket subclass
 
-As an extension, i defined a subclass 'SelfSocket' where I overrode some of the exposed socket function in its parent class and replaced it with terminal handling. For example, instead of referring to a socket file descriptor, it now refers to stdin to accept new characters. It also contains a function to read that new character (or escape sequence) and add it to its buffer. It also can receive sent data and be able to display it properly to the terminal without it affecting user input.
+As an extension, i defined a subclass `SelfSocket` where I overrode some of the exposed socket function in its parent class and replaced it with terminal handling. For example, instead of referring to a socket file descriptor, it now refers to stdin to accept new characters. It also contains a function to read that new character (or escape sequence) and add it to its buffer. It also can receive sent data and be able to display it properly to the terminal without it affecting user input.
 
 ### Broadcasting and Command Parsing
 
@@ -77,5 +77,5 @@ I chose to make the application run on a single thread and to implement polling 
 
 ### Termios and File Control Compatibility
 
-I hoped to make a program with portable code since I used Python3 as my language but failed to do so because of dependencies with termios and fcntl python libraries which are not available (or would not work as inteded) on certain non-unix compliant operating systems (ahem.. Windows). Perhaps workarounds would be available in some other way that i have not explored in the making of this set of applications.  
-The exception to this is the server-only program 'hanaserver.py' which does not have this dependency
+I hoped to make a program with portable code since I used Python3 as my language but failed to do so because of dependencies with `termios` and `fcntl` python libraries which are not available (or would not work as inteded) on certain non-unix compliant operating systems (ahem.. Windows). Perhaps workarounds would be available in some other way that i have not explored in the making of this set of applications.  
+The exception to this is the server-only program `hanaserver.py` which does not have this dependency
