@@ -36,22 +36,15 @@ class PeerQuit(Exception):
 # Class to manage name association with a socket
 
 class NamedSocket:
-	def __init__(self, socketholder, address):
+	def __init__(self, socketholder, alias):
 		self.sock = socketholder
-		self.addr = address
-		self.alias = address[0] + (':%d' % address[1])
+		self.alias = alias
 
 	def changename(self, newname):
 		self.alias = newname
 
 	def showname(self):
 		return self.alias
-
-	def showaddress(self):
-		return self.addr[0] + (':%d' % self.addr[1])
-
-	def showip(self):
-		return self.addr[0]
 
 	def fileno(self):
 		return self.sock.fileno()
@@ -73,9 +66,8 @@ class NamedSocket:
 # Class that mimics the behavior of the wrapper class NamedSocket
 
 class SelfIdentity(NamedSocket):
-	def __init__(self, port, prompt, clientmode):
-		self.addr = ('127.0.0.1', port)
-		self.alias = '127.0.0.1:%d' % port
+	def __init__(self, alias, prompt, clientmode):
+		self.alias = alias
 		self.prompt = prompt
 		self.keybuffer = ''
 		self.cursorpos = 0
@@ -128,37 +120,14 @@ class SelfIdentity(NamedSocket):
 				self.cursorpos = self.cursorpos - 1
 		elif lels == '\t': #Tab
 				pass
-		elif lels == '\n': #Enter (send)\
+		elif lels == '\n': #Enter (send)
 			self.send(('You: ' + self.keybuffer + '\n').encode(stdout.encoding))
-#			if self.keybuffer[:1] == '/':
-#				parse = self.keybuffer[1:].split(' ', 1)
-#				hana = parse[0]
-#				if len(parse) > 1:
-#					song = parse[1]
-#
-#				if hana.upper() == 'QUIT':
-#					printf(' ' * (len(self.keybuffer) - self.cursorpos))
-#					printf('\b \b' * (len(self.keybuffer + self.prompt)) )
-#					raise UserQuit
-#				elif hana != '':
-#					if self.mode:
-#						commandprocessor(hana.upper(), song, self, broadcast_list, self)
-#					else:
-#						message = hana.upper() + ' ' + song
-#						serverbroadcast(message, self, broadcast_list, self, 0)
-#				else:
-#					self.send('Please enter a command after the \'/\'\n')
 			if self.keybuffer.lstrip().rstrip() == 'QUIT':
 				serverbroadcast(self.showname() + ': QUIT', self, broadcast_list, self, 0)
 				raise UserQuit
 			else:
 				hana = self.showname() + ': ' + self.keybuffer.lstrip().rstrip() + '\n'
 				serverbroadcast(hana, self, broadcast_list, self, 0)
-#				if self.mode:
-#					commandprocessor('MSG', self.keybuffer, self, broadcast_list, self)
-#				else:
-#					message = 'MSG ' + self.keybuffer
-#					serverbroadcast(message + '\n', self, broadcast_list, self, 0)
 			printf(' ' * (len(self.keybuffer) - self.cursorpos))
 			printf('\b \b' * (len(self.keybuffer)) )
 			self.cursorpos = 0
@@ -199,59 +168,12 @@ def serverbroadcast(in_str, sock_source, broadcast_list, hostsocket, include=1):
 			serverbroadcaster(in_str, sock_source, broadcast_list)
 
 ##################################################################
-# function for command processing (used when in server config)
-#
-
-def commandprocessor(command, parameters, cursock, socketslist, hostsocket):
-	if command == 'QUIT':
-		cursock.shutdown(SHUT_RDWR)
-		cursock.close()
-		socklist.remove(cursock)
-		data = cursock.showname() + ' has disconnected\n'
-		serverbroadcast(data, cursock, socketslist, hostsocket)
-
-	elif command == 'MSG':
-		data = cursock.showname() + ' : ' + parameters + '\n'
-		serverbroadcast(data, cursock, socketslist, hostsocket, 0)
-
-	elif command == 'WHOAMI':
-		data = 'User information:\n\tAddress: ' + cursock.showaddress()
-		data = data + '\n\tAlias: ' + cursock.showname() + '\n'
-		cursock.send(data.encode(stdout.encoding))
-
-	elif command == 'TIME':
-		data = strftime('%Y %b %d %I:%M:%S %p (%a)').encode(stdout.encoding)
-		cursock.send(data)
-
-	elif command == 'NAME':
-		if parameters == '':
-			data = 'Error: Please enter a new alias/name\n'
-			cursock.send(data.encode(stdout.encoding))
-		else :
-			data = 'User ' + cursock.showname() + ' is now ' + parameters + '\n'
-			cursock.changename(parameters)
-			serverbroadcast(data, cursock, socketslist, hostsocket)
-	elif command == 'WHOIS':
-		if parameters == '':
-			data = '\nError: No search string\n\n'
-			cursock.send(data.encode(stdout.encoding))
-		else:
-			datalist = list([s for s in (socklist+[hostsocket]) if (s.showip() == parameters or s.showname() == parameters)])
-			for sres in datalist:
-				data = '\nUser information:\n\tAddress: ' + sres.showaddress()
-				data = data + '\n\tAlias: ' + sres.showname() + '\n'
-				cursock.send(data.encode(stdout.encoding))	
-	else:
-		data = '\nError: Unknown command entered...\n\n'.encode(stdout.encoding)
-		cursock.send(data)
-
-##################################################################
 # Hana TCP Chat Client-Server Application
 # Program Start
 #
 ##################################################################
 
-print('Machine Problem 1 - Internet Relay Chat 1.0')
+print('Machine Problem 1 - Peer to Peer Chat 1.0')
 print('Compliant with T 2:30-5:30 Protocol Standards')
 print('Programmed by: Jaime Bronozo (2013-18000)')
 print('Menu:')
@@ -276,7 +198,6 @@ mainsocket = socket(AF_INET, SOCK_STREAM)
 if mode:
 	mainsocket.bind( (address, port) )
 	mainsocket.listen(5)
-	runningport = port
 	print('Awaiting connection...')
 	read_sockets, _, _ = select([mainsocket], [], [])
 	for rsock in read_sockets:
@@ -288,12 +209,10 @@ else:
 	print('Connecting to ' + address + ':' + str(port) + '...')
 	mainsocket.connect( (address,port) )
 	socklist = [mainsocket]
-	(_, runningport) = mainsocket.getsockname()
 
 prompt = '>> '
 
-myself = SelfIdentity(runningport, prompt, mode)
-myself.changename(name)
+myself = SelfIdentity(name, prompt, mode)
 
 
 print('Connected... Switching to chat mode')
@@ -323,6 +242,9 @@ try:
 				clientsocket.send(data.encode(stdout.encoding))
 				clientsocket.shutdown(SHUT_RDWR)
 				clientsocket.close()
+
+		if socklist == []:
+			raise ServerDown
 		
 		# receives from connected peer
 		read_sockets, _, _ = select(socklist, [], [], 0)
@@ -339,25 +261,16 @@ try:
 				if hana == 'QUIT':
 					serverbroadcast(data, rsock, socklist, myself, 0)
 					raise PeerQuit
-#			if mode:
-#				result = data.split(' ', 1)
-#				hana = result[0]
-#				if len(result) > 1:
-#					song = result[1]
-#				commandprocessor(hana, song, rsock, socklist, myself)
 			data = data + '\n'
 			myself.send(data.encode(stdout.encoding))
 
-		#polling for user input
+		# polling for user input
 		read_keys, _, _ = select([myself], [], [], 0)
 		if read_keys != []:
 			myself.keyboardin(socklist)
 
 except (KeyboardInterrupt, UserQuit):
 	print('\nUser quitting...')
-#	for hanasong in socklist:
-#		hanasong.send((myself.showname() + ': QUIT').encode(stdout.encoding))
-#		print('Notifying peers')
 except PeerQuit:
 	print('\nPeer has exited')
 except ServerDown:

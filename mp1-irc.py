@@ -16,8 +16,7 @@ from time import strftime
 ##################################################################
 # BEGIN
 # Exception Classes
-#	Intuitive names for
-# exit conditions
+#	Intuitive names for exit conditions
 
 class UserQuit(Exception):
 	def __init__(self):
