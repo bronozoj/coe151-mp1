@@ -68,13 +68,14 @@ class NamedSocket:
 # Class that mimics the behavior of the wrapper class NamedSocket
 
 class SelfIdentity(NamedSocket):
-	def __init__(self, port, prompt, clientmode):
+	def __init__(self, port, prompt, clientmode, colormode=0):
 		self.addr = ('127.0.0.1', port)
 		self.alias = '127.0.0.1:%d' % port
 		self.prompt = prompt
 		self.keybuffer = ''
 		self.cursorpos = 0
 		self.mode = clientmode
+		self.colormode = colormode
 
 	def close(self):
 		print('\nReturning terminal settings')
@@ -87,7 +88,10 @@ class SelfIdentity(NamedSocket):
 	def send(self, string, flags=0):
 		printf(' ' * (len(self.keybuffer) - self.cursorpos))
 		printf('\b \b' * (len(self.prompt + self.keybuffer)) )
-		print(string.decode(stdout.encoding).lstrip().rstrip())
+		out = string.decode(stdout.encoding)
+		if self.colormode:
+			out = tcolor.remove(out)
+		print(out.lstrip().rstrip())
 		printf(self.prompt + self.keybuffer + ('\b' * (len(self.keybuffer) - self.cursorpos) ) )
 
 	def keyboardin(self, broadcast_list):
@@ -122,7 +126,12 @@ class SelfIdentity(NamedSocket):
 				self.keybuffer = self.keybuffer[:self.cursorpos - 1] + self.keybuffer[self.cursorpos:]
 				self.cursorpos = self.cursorpos - 1
 		elif lels == '\t': #Tab
-				pass
+				if self.colormode:
+					self.colormode = 0
+					self.send('Colored output enabled\n'.encode(stdout.encoding))
+				else:
+					self.colormode = 1
+					self.send('Colored output disabled\n'.encode(stdout.encoding))
 		elif lels == '\n': #Enter (send)
 			hana = ''
 			song = ''
@@ -164,7 +173,56 @@ class SelfIdentity(NamedSocket):
 			printf(lels)
 			self.keybuffer = self.keybuffer + lels
 			self.cursorpos = self.cursorpos + len(lels)
+
+##################################################################
+# BEGIN
+# 	wrapper class for terminal select graphic rendition aka
+# terminal font color and style
+#
+
+class tcolor:
+	def esc(colorlist):
+		return '\033[' + ';'.join(colorlist) + 'm'
+	def color(string, colorlist = []):
+		colorstring = '\033[' + ';'.join(colorlist) + 'm'
+		return colorstring + string + '\033[0m'
 		
+	def remove(string):
+		store = string.split('\033[')
+		clean = ''
+		if len(store) > 1:
+			if store[0] == '':
+				store = store[1:]
+			for s in store:
+				sp = s.split('m',1)
+				if len(sp) > 1:
+					clean = clean + sp[1]
+			return clean
+		return string
+
+	def reset():
+		return '\033[0m'
+
+class cc:
+	bold	= '1'
+	italic	= '3'
+	under	= '4'
+	black	= 0
+	red	= 1
+	green	= 2
+	yellow	= 3
+	blue	= 4
+	magenta	= 5
+	cyan	= 6
+	white	= 7
+	def b(colornum):
+		return str(40+colornum)
+	def f(colornum):
+		return str(30+colornum)
+	def bh(colornum):
+		return str(100+colornum)
+	def fh(colornum):
+		return str(90+colornum)
 
 ##################################################################
 # function wrapper for newlineless print (and refresh)
@@ -216,16 +274,25 @@ def commandprocessor(command, parameters, cursock, socketslist, hostsocket):
 		serverbroadcast(data, cursock, socketslist, hostsocket)
 
 	elif command == 'MSG':
-		data = cursock.showname() + ' : ' + parameters + '\n'
+		item = [cc.bold]
+
+		data = tcolor.color(cursock.showname() + ': ',item) + parameters + '\n'
 		serverbroadcast(data, cursock, socketslist, hostsocket, 0)
 
 	elif command == 'WHOAMI':
-		data = 'User information:\n\tAddress: ' + cursock.showaddress()
-		data = data + '\n\tAlias: ' + cursock.showname() + '\n'
+		value = [cc.italic]
+		item = [cc.b(cc.blue), cc.bold]
+		head = item + [cc.under]
+
+		data = tcolor.color('User information:', head) +'\n\t' + tcolor.color('Address:', item) + ' '
+		data += tcolor.color(cursock.showaddress(), value) + '\n\t' + tcolor.color('Alias:', item)
+		data += ' ' + tcolor.color(cursock.showname(), value) + '\n'
 		serverbroadcast(data, cursock, socketslist, hostsocket,2)
 
 	elif command == 'TIME':
-		data = strftime('%Y %b %d %I:%M:%S %p (%A)\n')
+		item = [cc.f(cc.black), cc.b(cc.white)]
+
+		data = tcolor.color(strftime('%Y %b %d %I:%M:%S %p (%A)'), item) + '\n'
 		serverbroadcast(data, cursock, socketslist, hostsocket,2)
 
 	elif command == 'NAME':
@@ -233,7 +300,11 @@ def commandprocessor(command, parameters, cursock, socketslist, hostsocket):
 			data = 'Error: Please enter a new alias/name\n'
 			serverbroadcast(data, cursock, socketslist, hostsocket,2)
 		else :
-			data = 'User ' + cursock.showname() + ' is now ' + parameters + '\n'
+			names = [cc.b(cc.green), cc.bold]
+			text = [cc.f(cc.green), cc.italic, cc.bold]
+
+			data = tcolor.color('User ', text) + tcolor.color(cursock.showname(), names)
+			data += tcolor.color(' is now ', text) + tcolor.color(parameters, names) + '\n'
 			cursock.changename(parameters)
 			serverbroadcast(data, cursock, socketslist, hostsocket)
 	elif command == 'WHOIS':
@@ -241,15 +312,22 @@ def commandprocessor(command, parameters, cursock, socketslist, hostsocket):
 			data = '\nError: No search string\n\n'
 			serverbroadcast(data, cursock, socketslist, hostsocket,2)
 		else:
+			value = [cc.italic]
+			item = [cc.b(cc.blue), cc.bold]
+			head = item + [cc.under]
+
 			datalist = list([s for s in (socklist+[hostsocket]) if (s.showip() == parameters or s.showname() == parameters)])
 			for sres in datalist:
-				data = '\nUser information:\n\tAddress: ' + sres.showaddress()
-				data = data + '\n\tAlias: ' + sres.showname() + '\n'
+				data = '\n' + tcolor.color('User information:', head) + '\n\t' + tcolor.color('Address:', item)
+				data += ' ' + tcolor.color(sres.showaddress(), value) + '\n\t' + tcolor.color('Alias:',item)
+				data += ' ' + tcolor.color(sres.showname(), value) + '\n'
 				cursock.send(data.encode(stdout.encoding))	
 	else:
-		data = '\nError: Unknown command entered...\n\n'#.encode(stdout.encoding)
+		value = [cc.b(cc.red)]
+		item = value + [cc.bold]
+
+		data = '\n' + tcolor.color('Error:', item) + tcolor.color(' Unknown command entered...', value) + '\n'
 		serverbroadcast(data, cursock, socketslist, hostsocket,2)
-#		cursock.send(data)
 
 ##################################################################
 # Hana TCP Chat Client-Server Application
@@ -257,23 +335,28 @@ def commandprocessor(command, parameters, cursock, socketslist, hostsocket):
 #
 ##################################################################
 
-print('Machine Problem 1 - Internet Relay Chat 1.0')
-print('Compliant with T 2:30-5:30 Protocol Standards')
-print('Programmed by: Jaime Bronozo (2013-18000)')
-print('Menu:')
-print('\t[1] Chat Client\n\t[2] Chat Server')
-keyin = input('Select mode: ')
-if keyin == '1':
-	mode = 0
-	address = input('Enter address: ')
-elif keyin == '2':
-	mode = 1
-	address = ''
-else:
-	print('Invalid mode. Exiting')
-	exit()
+print(tcolor.color('Machine Problem 1 - Internet Relay Chat 1.0', [cc.f(cc.green), cc.bold]))
+print(tcolor.color('Compliant with T 2:30-5:30 Protocol Standards', [cc.f(cc.blue), cc.bold]))
+print(tcolor.color('Programmed by: Jaime Bronozo (2013-18000)', [cc.f(cc.red), cc.bold]))
+print(tcolor.color('Menu:', [cc.b(cc.red), cc.bold]))
+print('\t' + tcolor.color('[1] Chat Client', [cc.f(cc.yellow), cc.bold]) )
+print('\t' + tcolor.color('[2] Chat Server', [cc.f(cc.magenta), cc.bold]))
+try:
+	keyin = input('Select mode: ')
+	if keyin == '1':
+		mode = 0
+		address = input('Enter address: ')
+	elif keyin == '2':
+		mode = 1
+		address = ''
+	else:
+		print(tcolor.color('Invalid mode. Exiting', [cc.b(cc.red), cc.bold]))
+		exit()
 
-port = int(input('Enter port: '))
+	port = int(input('Enter port: '))
+except KeyboardInterrupt:
+	print('\n' + tcolor.color('Exiting', [cc.b(cc.red), cc.bold]))
+	exit()
 
 # setting up connection socket
 mainsocket = socket(AF_INET, SOCK_STREAM)
@@ -291,7 +374,7 @@ prompt = '>> '
 
 myself = SelfIdentity(runningport, prompt, mode)
 
-print('Switching to chat mode')
+print(tcolor.color('Switching to chat mode', [cc.f(cc.green), cc.bold]))
 
 # going to termios to allow per character input
 oldflags = fcntl(stdin, F_GETFL)
@@ -312,7 +395,6 @@ try:
 				clientsocket, clientaddr = rsock.accept()
 				newsock = NamedSocket(clientsocket, clientaddr)
 				data = newsock.showname() + ' has connected\n'
-#				data = data.encode(stdout.encoding)
 				socklist.append(newsock)
 				serverbroadcast(data, newsock, socklist, myself, 0)
 		
