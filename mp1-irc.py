@@ -181,15 +181,27 @@ def printf(in_str=''):
 
 def serverbroadcast(in_str, sock_source, broadcast_list, hostsocket, include=1):
 	data = in_str.encode(stdout.encoding)
-	for socker in (broadcast_list + [hostsocket]):
+	if include == 2:
 		try:
 			if include or socker != sock_source:
-				socker.send(data)
+				sock_source.send(data)
 		except BrokenPipeError:
-			socker.close()
-			broadcast_list.remove(socker)
-			data2 = socker.showname() + ' has disconnected unexpectedly\n'
-			serverbroadcaster(in_str, sock_source, broadcast_list)
+			sock_source.close()
+			broadcast_list.remove(sock_source)
+			data2 = sock_source.showname() + ' has disconnected unexpectedly\n'
+			serverbroadcast(in_str, sock_source, broadcast_list, hostsocket)
+		finally:
+			return
+	else:
+		for socker in (broadcast_list + [hostsocket]):
+			try:
+				if include or socker != sock_source:
+					socker.send(data)
+			except BrokenPipeError:
+				socker.close()
+				broadcast_list.remove(socker)
+				data2 = socker.showname() + ' has disconnected unexpectedly\n'
+				serverbroadcast(in_str, sock_source, broadcast_list, hostsocket)
 
 ##################################################################
 # function for command processing (used when in server config)
@@ -210,16 +222,16 @@ def commandprocessor(command, parameters, cursock, socketslist, hostsocket):
 	elif command == 'WHOAMI':
 		data = 'User information:\n\tAddress: ' + cursock.showaddress()
 		data = data + '\n\tAlias: ' + cursock.showname() + '\n'
-		cursock.send(data.encode(stdout.encoding))
+		serverbroadcast(data, cursock, socketslist, hostsocket,2)
 
 	elif command == 'TIME':
-		data = strftime('%Y %b %d %I:%M:%S %p (%A)\n').encode(stdout.encoding)
-		cursock.send(data)
+		data = strftime('%Y %b %d %I:%M:%S %p (%A)\n')
+		serverbroadcast(data, cursock, socketslist, hostsocket,2)
 
 	elif command == 'NAME':
 		if parameters == '':
 			data = 'Error: Please enter a new alias/name\n'
-			cursock.send(data.encode(stdout.encoding))
+			serverbroadcast(data, cursock, socketslist, hostsocket,2)
 		else :
 			data = 'User ' + cursock.showname() + ' is now ' + parameters + '\n'
 			cursock.changename(parameters)
@@ -227,7 +239,7 @@ def commandprocessor(command, parameters, cursock, socketslist, hostsocket):
 	elif command == 'WHOIS':
 		if parameters == '':
 			data = '\nError: No search string\n\n'
-			cursock.send(data.encode(stdout.encoding))
+			serverbroadcast(data, cursock, socketslist, hostsocket,2)
 		else:
 			datalist = list([s for s in (socklist+[hostsocket]) if (s.showip() == parameters or s.showname() == parameters)])
 			for sres in datalist:
@@ -235,8 +247,9 @@ def commandprocessor(command, parameters, cursock, socketslist, hostsocket):
 				data = data + '\n\tAlias: ' + sres.showname() + '\n'
 				cursock.send(data.encode(stdout.encoding))	
 	else:
-		data = '\nError: Unknown command entered...\n\n'.encode(stdout.encoding)
-		cursock.send(data)
+		data = '\nError: Unknown command entered...\n\n'#.encode(stdout.encoding)
+		serverbroadcast(data, cursock, socketslist, hostsocket,2)
+#		cursock.send(data)
 
 ##################################################################
 # Hana TCP Chat Client-Server Application
@@ -332,8 +345,6 @@ try:
 
 except (KeyboardInterrupt, UserQuit):
 	print('\nUser quitting...')
-	if mode == 0:
-		mainsocket.send('QUIT'.encode(stdout.encoding))
 except ServerDown:
 	print('\nUnexpected disconnection...')
 finally:
