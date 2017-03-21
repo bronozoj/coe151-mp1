@@ -141,6 +141,55 @@ class SelfIdentity(NamedSocket):
 			self.keybuffer = self.keybuffer + lels
 			self.cursorpos = self.cursorpos + len(lels)
 		
+##################################################################
+# BEGIN
+# 	wrapper class for terminal select graphic rendition aka
+# terminal font color and style
+#
+
+class tcolor:
+	def esc(colorlist):
+		return '\033[' + ';'.join(colorlist) + 'm'
+	def color(string, colorlist = []):
+		colorstring = '\033[' + ';'.join(colorlist) + 'm'
+		return colorstring + string + '\033[0m'
+		
+	def remove(string):
+		store = string.split('\033[')
+		clean = ''
+		if len(store) > 1:
+			if store[0] == '':
+				store = store[1:]
+			for s in store:
+				sp = s.split('m',1)
+				if len(sp) > 1:
+					clean = clean + sp[1]
+			return clean
+		return string
+
+	def reset():
+		return '\033[0m'
+
+class cc:
+	bold	= '1'
+	italic	= '3'
+	under	= '4'
+	black	= 0
+	red	= 1
+	green	= 2
+	yellow	= 3
+	blue	= 4
+	magenta	= 5
+	cyan	= 6
+	white	= 7
+	def b(colornum):
+		return str(40+colornum)
+	def f(colornum):
+		return str(30+colornum)
+	def bh(colornum):
+		return str(100+colornum)
+	def fh(colornum):
+		return str(90+colornum)
 
 ##################################################################
 # function wrapper for newlineless print (and refresh)
@@ -173,32 +222,45 @@ def serverbroadcast(in_str, sock_source, broadcast_list, hostsocket, include=1):
 #
 ##################################################################
 
-print('Machine Problem 1 - Peer to Peer Chat 1.0')
-print('Compliant with T 2:30-5:30 Protocol Standards')
-print('Programmed by: Jaime Bronozo (2013-18000)')
-print('Menu:')
-print('\t[1] Chat Client\n\t[2] Chat Server')
-keyin = input('Select mode: ')
-if keyin == '1':
-	mode = 0
-	address = input('Enter address: ')
-elif keyin == '2':
-	mode = 1
-	address = ''
-else:
-	print('Invalid mode. Exiting')
+notice = [cc.f(cc.cyan), cc.bold]
+noticed = [cc.b(cc.cyan), cc.bold]
+menu = [cc.b(cc.red), cc.bold]
+menuitem = [cc.f(cc.blue), cc.bold]
+query = [cc.f(cc.yellow),cc.bold]
+mote = [cc.f(cc.green), cc.bold]
+moted = [cc.b(cc.green), cc.bold]
+
+print(tcolor.color('Machine Problem 1 - Peer to Peer Chat 1.0', notice ))
+print(tcolor.color('Compliant with T 2:30-5:30 Protocol Standards', notice))
+print(tcolor.color('Programmed by: Jaime Bronozo (2013-18000)', notice))
+print(tcolor.color('Menu:   \t          ', [cc.f(cc.red), cc.bold]))
+print(tcolor.color('\t[1] Chat Client   ', menuitem) )
+print(tcolor.color('\t[2] Chat Server   ', menuitem))
+try:
+	keyin = input(tcolor.color('Select mode',query) + ': ')
+	if keyin == '1':
+		mode = 0
+		address = input(tcolor.color('Enter address', query) + ': ')
+	elif keyin == '2':
+		mode = 1
+		address = ''
+	else:
+		print('Invalid mode. Exiting')
+		exit()
+
+	port = int(input(tcolor.color('Enter port', query) + ': '))
+
+	name = input(tcolor.color('Please enter a name',query) + ': ')
+except KeyboardInterrupt:
+	print('\n' + tcolor.color('Exiting', menu))
 	exit()
-
-port = int(input('Enter port: '))
-
-name = input('Please enter a name: ')
 
 # setting up connection socket
 mainsocket = socket(AF_INET, SOCK_STREAM)
 if mode:
 	mainsocket.bind( (address, port) )
 	mainsocket.listen(5)
-	print('Awaiting connection...')
+	print(tcolor.color('Awaiting connection...', notice))
 	read_sockets, _, _ = select([mainsocket], [], [])
 	for rsock in read_sockets:
 		clientsocket, clientaddr = rsock.accept()
@@ -206,7 +268,7 @@ if mode:
 		socklist = [newsock]
 
 else:
-	print('Connecting to ' + address + ':' + str(port) + '...')
+	print(tcolor.color('Connecting to ', notice) + tcolor.color(address+':'+str(port),noticed) + tcolor.color('...',notice))
 	mainsocket.connect( (address,port) )
 	socklist = [mainsocket]
 
@@ -215,9 +277,10 @@ prompt = '>> '
 myself = SelfIdentity(name, prompt, mode)
 
 
-print('Connected... Switching to chat mode')
+print(tcolor.color('Switching to chat mode', mote))
 
-serverbroadcast('You are now chatting with ' + name + '\n', myself, socklist, myself, 0)
+message =tcolor.color('You are now chatting with ', mote) + tcolor.color(name, moted) + '\n'
+serverbroadcast(message, myself, socklist, myself, 0)
 
 # going to termios to allow per character input
 oldflags = fcntl(stdin, F_GETFL)

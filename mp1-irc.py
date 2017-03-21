@@ -267,10 +267,13 @@ def serverbroadcast(in_str, sock_source, broadcast_list, hostsocket, include=1):
 
 def commandprocessor(command, parameters, cursock, socketslist, hostsocket):
 	if command == 'QUIT':
+		text = [cc.f(cc.magenta), cc.bold]
+		names = [cc.b(cc.magenta), cc.bold]
+
 		cursock.shutdown(SHUT_RDWR)
 		cursock.close()
 		socklist.remove(cursock)
-		data = cursock.showname() + ' has disconnected\n'
+		data = tcolor.color(cursock.showname(), names) + tcolor.color(' has disconnected',text) + '\n'
 		serverbroadcast(data, cursock, socketslist, hostsocket)
 
 	elif command == 'MSG':
@@ -335,27 +338,32 @@ def commandprocessor(command, parameters, cursock, socketslist, hostsocket):
 #
 ##################################################################
 
-print(tcolor.color('Machine Problem 1 - Internet Relay Chat 1.0', [cc.f(cc.green), cc.bold]))
-print(tcolor.color('Compliant with T 2:30-5:30 Protocol Standards', [cc.f(cc.blue), cc.bold]))
-print(tcolor.color('Programmed by: Jaime Bronozo (2013-18000)', [cc.f(cc.red), cc.bold]))
-print(tcolor.color('Menu:', [cc.b(cc.red), cc.bold]))
-print('\t' + tcolor.color('[1] Chat Client', [cc.f(cc.yellow), cc.bold]) )
-print('\t' + tcolor.color('[2] Chat Server', [cc.f(cc.magenta), cc.bold]))
+notice = [cc.f(cc.cyan), cc.bold]
+menu = [cc.b(cc.red), cc.bold]
+menuitem = [cc.f(cc.blue), cc.bold]
+query = [cc.f(cc.yellow),cc.bold]
+
+print(tcolor.color('Machine Problem 1 - Internet Relay Chat 1.1', notice ))
+print(tcolor.color('Compliant with T 2:30-5:30 Protocol Standards', notice))
+print(tcolor.color('Programmed by: Jaime Bronozo (2013-18000)', notice))
+print(tcolor.color('Menu:   \t          ', [cc.f(cc.red), cc.bold]))
+print(tcolor.color('\t[1] Chat Client   ', menuitem) )
+print(tcolor.color('\t[2] Chat Server   ', menuitem))
 try:
-	keyin = input('Select mode: ')
+	keyin = input(tcolor.color('Select mode',query) + ': ')
 	if keyin == '1':
 		mode = 0
-		address = input('Enter address: ')
+		address = input(tcolor.color('Enter address', query) + ': ')
 	elif keyin == '2':
 		mode = 1
 		address = ''
 	else:
-		print(tcolor.color('Invalid mode. Exiting', [cc.b(cc.red), cc.bold]))
+		print(tcolor.color('Invalid mode. Exiting', menu))
 		exit()
 
-	port = int(input('Enter port: '))
+	port = int(input(tcolor.color('Enter port', query) + ': '))
 except KeyboardInterrupt:
-	print('\n' + tcolor.color('Exiting', [cc.b(cc.red), cc.bold]))
+	print('\n' + tcolor.color('Exiting', menu))
 	exit()
 
 # setting up connection socket
@@ -394,7 +402,8 @@ try:
 			for rsock in read_sockets:
 				clientsocket, clientaddr = rsock.accept()
 				newsock = NamedSocket(clientsocket, clientaddr)
-				data = newsock.showname() + ' has connected\n'
+				data = tcolor.color(newsock.showname(), [cc.b(cc.magenta), cc.bold])
+				data += tcolor.color(' has connected',[cc.f(cc.magenta), cc.bold]) +'\n'
 				socklist.append(newsock)
 				serverbroadcast(data, newsock, socklist, myself, 0)
 		
