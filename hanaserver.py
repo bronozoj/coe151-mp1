@@ -3,6 +3,7 @@ import socket
 import select
 import sys
 import signal
+import time
 
 def printf(in_str=''):
 	print(in_str, end='')
@@ -41,6 +42,49 @@ class NamedSocket:
 
 	def close(self):
 		self.sock.close()
+class tcolor:
+	def esc(colorlist):
+		return '\033[' + ';'.join(colorlist) + 'm'
+	def color(string, colorlist = []):
+		colorstring = '\033[' + ';'.join(colorlist) + 'm'
+		return colorstring + string + '\033[0m'
+		
+	def remove(string):
+		store = string.split('\033[')
+		clean = ''
+		if len(store) > 1:
+			if store[0] == '':
+				store = store[1:]
+			for s in store:
+				sp = s.split('m',1)
+				if len(sp) > 1:
+					clean = clean + sp[1]
+			return clean
+		return string
+
+	def reset():
+		return '\033[0m'
+
+class cc:
+	bold	= '1'
+	italic	= '3'
+	under	= '4'
+	black	= 0
+	red	= 1
+	green	= 2
+	yellow	= 3
+	blue	= 4
+	magenta	= 5
+	cyan	= 6
+	white	= 7
+	def b(colornum):
+		return str(40+colornum)
+	def f(colornum):
+		return str(30+colornum)
+	def bh(colornum):
+		return str(100+colornum)
+	def fh(colornum):
+		return str(90+colornum)
 
 def broadcaster(data, cursock, socketslist, selfsend=1):
 	for socker in socklist:
@@ -86,8 +130,9 @@ try:
 		for clisock in csock:
 			clientsocket, addr = serversocket.accept()
 			sockname = NamedSocket(clientsocket, addr)
-			data = sockname.showname() + ' has connected\n'
-			printf(data)
+			data = tcolor.color(sockname.showname(),[cc.b(cc.magenta), cc.bold])
+			data += tcolor.color(' has connected',[cc.f(cc.magenta), cc.bold]) + '\n'
+			printf(tcolor.remove(data))
 			data = data.encode(sys.stdout.encoding)
 			socklist = socklist + [sockname]			
 			broadcaster(data, sockname, socklist, 0)
@@ -112,34 +157,55 @@ try:
 			#input('trash')
 
 			if hana == 'QUIT':
+				text = [cc.f(cc.magenta), cc.bold]
+				names = [cc.b(cc.magenta), cc.bold]
+
 				print('closing connection for ' + rsock.showname())
 				rsock.shutdown(socket.SHUT_RDWR)
 				rsock.close()
 				socklist.remove(rsock)
-				data = rsock.showname() + ' has disconnected\n'
+				data = tcolor.color(rsock.showname(),names) + tcolor.color(' has disconnected',text) + '\n'
 				data = data.encode(sys.stdout.encoding)
 				broadcaster(data, rsock, socklist, 0)
 			elif hana == 'MSG':
-				data = rsock.showname() + ' : ' + song + '\n'
-				printf(data)
+				item = [cc.bold]
+
+				data = tcolor.color(rsock.showname() + ' : ', item) + song + '\n'
+				printf(tcolor.remove(data))
 				data = data.encode(sys.stdout.encoding)
 				broadcaster(data, rsock, socklist, 0)
 			elif hana == 'WHOAMI':
-				data = 'User information:\n\tAddress: ' + rsock.showaddress()
-				data = data + '\n\tAlias: ' + rsock.showname() + '\n'
+				value = [cc.italic]
+				item = [cc.b(cc.blue), cc.bold]
+				head = item + [cc.under]
+
+				print('Asked for self identification')
+				data = tcolor.color('User information:', head)  + '\n\t' + tcolor.color('Address:', item) 
+				data += ' ' + tcolor.color(rsock.showaddress(), value) + '\n\t'
+				data += tcolor.color('Alias:', item) + ' ' + tcolor.color(rsock.showname(), value) + '\n'
+				printf(tcolor.remove(data))
 				rsock.send(data.encode(sys.stdout.encoding))
 
 			elif hana == 'TIME':
-				data = 'Its High Noon...(somewhere in the world)\n'.encode(sys.stdout.encoding)
-				rsock.send(data)
+				item = [cc.f(cc.black), cc.b(cc.white), cc.bold]
+
+				data = tcolor.color(time.strftime('%Y %b %d %I:%M:%S %p (%A)'), item) + '\n'
+				printf('Asked for time: ' + tcolor.remove(data))
+				rsock.send(data.encode(sys.stdout.encoding))
 
 			elif hana == 'NAME':
-				if song == '':
-					data = 'Error: Please enter a new alias/name\n'
+				if song == '':				
+					value = [cc.b(cc.red)]
+					item = value + [cc.bold]
+					data = tcolor.color('Error:', item) + tcolor.color(' Please enter a new alias/name', value) + '\n'
 					rsock.send(data.encode(sys.stdout.encoding))
 				else :
+					names = [cc.b(cc.green), cc.bold]
+					text = [cc.f(cc.green), cc.italic, cc.bold]
+
 					print('Changing name from ' + rsock.showname() + ' to ' + song)
-					data = 'User ' + rsock.showname() + ' is now ' + song + '\n'
+					data = tcolor.color('User ', text) + tcolor.color(rsock.showname(), names)
+					data += tcolor.color(' is now ', text) + tcolor.color(song, names) + '\n'
 					rsock.changename(song)
 					data = data.encode(sys.stdout.encoding)
 					broadcaster(data, rsock, socklist, 1)
@@ -148,13 +214,21 @@ try:
 					data = '\nError: No search string\n\n'
 					rsock.send(data.encode(sys.stdout.encoding))
 				else:
+					value = [cc.italic]
+					item = [cc.b(cc.blue), cc.bold]
+					head = item + [cc.under]
+					print('Searched for ' + song)
 					datalist = list([s for s in socklist if (s.showip() == song or s.showname() == song)])
 					for sres in datalist:
-						data = '\nUser information:\n\tAddress: ' + sres.showaddress()
-						data = data + '\n\tAlias: ' + sres.showname() + '\n'
+						data = '\n' + tcolor.color('User information:', head) + '\n\t'
+						data += tcolor.color('Address:', item) + ' ' + tcolor.color(sres.showaddress(), value)
+						data += '\n\t' + tcolor.color('Alias:', item) + ' '
+						data += tcolor.color(sres.showname(),value) + '\n'
 						rsock.send(data.encode(sys.stdout.encoding))	
-			else:
-				data = '\nError: Unknown command entered...\n\n'.encode(sys.stdout.encoding)
+			else:				
+				value = [cc.b(cc.red)]
+				item = value + [cc.bold]
+				data = ('\n' + tcolor.color('Error:', item) + tcolor.color(' Unknown command entered...', value) + '\n').encode(sys.stdout.encoding)
 				try:
 					rsock.send(data)
 				except (BrokenPipeError, ConnectionResetError):

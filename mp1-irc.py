@@ -293,14 +293,17 @@ def commandprocessor(command, parameters, cursock, socketslist, hostsocket):
 		serverbroadcast(data, cursock, socketslist, hostsocket,2)
 
 	elif command == 'TIME':
-		item = [cc.f(cc.black), cc.b(cc.white)]
+		item = [cc.f(cc.black), cc.b(cc.white), cc.bold]
 
 		data = tcolor.color(strftime('%Y %b %d %I:%M:%S %p (%A)'), item) + '\n'
 		serverbroadcast(data, cursock, socketslist, hostsocket,2)
 
 	elif command == 'NAME':
 		if parameters == '':
-			data = 'Error: Please enter a new alias/name\n'
+			value = [cc.b(cc.red)]
+			item = value + [cc.bold]
+
+			data = tcolor.color('Error:',item) + tcolor.color(' Please enter a new alias/name',value) + '\n'
 			serverbroadcast(data, cursock, socketslist, hostsocket,2)
 		else :
 			names = [cc.b(cc.green), cc.bold]
